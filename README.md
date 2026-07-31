@@ -60,12 +60,16 @@ uv pip install -r requirements.txt
 #### Docker를 통한 설치
 
 ```bash
-# Docker Compose를 사용한 빌드 및 실행
+# Docker Compose를 사용한 빌드 및 실행 (API + MCP)
 docker-compose up -d
 
-# 또는 Docker CLI 사용
-docker build -t semantic-api .
+# 또는 Docker CLI 사용 (API)
+docker build -f Dockerfile.api -t semantic-api .
 docker run -d -p 8091:8080 --name semantic-api semantic-api
+
+# Docker CLI 사용 (MCP)
+docker build -f Dockerfile.mcp -t semantic-mcp .
+docker run -d -p 8092:8000 --name semantic-mcp semantic-mcp
 ```
 
 ### 사용 방법
@@ -91,12 +95,14 @@ docker-compose down
 
 # 로그 확인
 docker-compose logs -f semantic-api
+docker-compose logs -f semantic-mcp
 ```
 
 #### API 접근
 
-- **로컬**: http://localhost:8080
-- **Docker**: http://localhost:8091
+- **로컬 API**: http://localhost:8080
+- **Docker API**: http://localhost:8091
+- **Docker MCP (streamable-http)**: http://localhost:8092
 
 #### MCP Server로 사용하기
 
@@ -387,12 +393,16 @@ uv pip install -r requirements.txt
 #### Installation via Docker
 
 ```bash
-# Build and run using Docker Compose
+# Build and run using Docker Compose (API + MCP)
 docker-compose up -d
 
-# Or using Docker CLI
-docker build -t semantic-api .
+# Or using Docker CLI (API)
+docker build -f Dockerfile.api -t semantic-api .
 docker run -d -p 8091:8080 --name semantic-api semantic-api
+
+# Docker CLI (MCP)
+docker build -f Dockerfile.mcp -t semantic-mcp .
+docker run -d -p 8092:8000 --name semantic-mcp semantic-mcp
 ```
 
 ### Usage
@@ -418,12 +428,14 @@ docker-compose down
 
 # View logs
 docker-compose logs -f semantic-api
+docker-compose logs -f semantic-mcp
 ```
 
 #### API Access
 
-- **Local**: http://localhost:8080
-- **Docker**: http://localhost:8091
+- **Local API**: http://localhost:8080
+- **Docker API**: http://localhost:8091
+- **Docker MCP (streamable-http)**: http://localhost:8092
 
 #### Using as an MCP Server
 

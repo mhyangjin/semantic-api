@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from fastmcp import FastMCP
 
-from semantic import create_service
+from app.semantic import create_service
 
 from .models import (
     ResolveQueryRequest,
@@ -30,11 +30,11 @@ mcp = FastMCP("Semantic Layer")
 
 
 # ==========================================================
-# resolve_query
+# resolve_semantics
 # ==========================================================
 
 @mcp.tool(
-    name="resolve_query",
+    name="resolve_semantics",
     description="""
 Resolve business terms into Semantic Layer metadata.
 
@@ -53,7 +53,7 @@ dimensions,
 tables and filters.
 """
 )
-def resolve_query(
+def resolve_semantics(
     request: ResolveQueryRequest,
 ) -> ResolveQueryResponse:
 

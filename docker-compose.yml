@@ -1,13 +1,21 @@
-version: '3.8'
-
 services:
-  semantic-api:
-    build: .
+  semantic:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     container_name: semantic-api
     ports:
-      - "8091:8080"
+      - "8091:8000"
     environment:
       - APP_HOST=0.0.0.0
-      - APP_PORT=8080
+      - APP_PORT=8000
     restart: unless-stopped
 
+  semantic-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    container_name: semantic-mcp
+    ports:
+      - "8092:8000"
+    restart: unless-stopped

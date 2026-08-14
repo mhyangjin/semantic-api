@@ -7,7 +7,7 @@ owner: Sendy
 refresh_cycle: hourly
 
 joins:
-  - table: notifications
+  - table: notification
     type: inner
     purpose: 수신인 정보로 발송 정보를 조회
     join_cardinality: many_to_one
@@ -43,7 +43,7 @@ columns:
     business_name: 고객 메시지 ID
     description: >
         발송 요청에 대한 수신자 단위의 고유 식별자
-        수신자 번호를 base64로 디코딩 한 후 '.'을 붙이고,뒤에 uuid를 붙여서 고객 메시지 ID를 생성한다.
+        수신자 번호를 base64로 인코딩 한 후 '.'을 붙이고,뒤에 uuid를 붙여서 고객 메시지 ID를 생성한다.
 
   - name: channel_id
     business_name: 발송 채널 ID

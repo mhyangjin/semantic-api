@@ -6,5 +6,5 @@ mappings:
   - table: notification_status
     column: status
 joins:
-  - notifications
+  - notification
   - recipient

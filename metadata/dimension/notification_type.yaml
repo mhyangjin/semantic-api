@@ -7,4 +7,4 @@ mappings:
     column: notification_type
 joins:
   - notification_status
-  - notifications
+  - notification

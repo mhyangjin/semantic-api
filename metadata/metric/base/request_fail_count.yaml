@@ -1,7 +1,7 @@
 metric_name: request_fail_count
 business_name: 발송 요청 실패 건수
 description: >
-  발송 요청된 전체 건수
+  발송 요청 처리 중 실패 건수
 
 aggregate: count
 table: notification_status

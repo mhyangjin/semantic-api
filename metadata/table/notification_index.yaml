@@ -9,7 +9,7 @@ owner: Sendy
 refresh_cycle: hourly
 
 joins:
-  - table: notifications
+  - table: notification
     type: inner
     purpose: 발송 내역을 조회
     join_cardinality: many_to_one

@@ -9,6 +9,10 @@ class DimensionFilterCondition(BaseModel):
     operator: str
     value: Any
 
+class PatternFilterCondition(BaseModel):
+    regex: str
+    value_group: int = 1
+
 class ColumnFilterCondition(BaseModel):
     column: str
     operator: str
@@ -129,6 +133,25 @@ class GlossaryBase(BaseModel):
     aliases: list[str] = []
     description: str | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_aliases(cls, data):
+        if not isinstance(data, dict):
+            return data
+
+        data = dict(data)
+
+        aliases = data.get("aliases")
+
+        if aliases is None:
+            data["aliases"] = []
+        elif isinstance(aliases, str):
+            data["aliases"] = [aliases]
+        else:
+            data["aliases"] = [alias for alias in aliases if alias is not None]
+
+        return data
+
     class Config:
         extra = "forbid"
 
@@ -142,6 +165,7 @@ class DimensionGlossary(GlossaryBase) :
     values: dict[str, list[str]] | None = None
 
 class FilterGlossary(GlossaryBase):
+    patterns: list[PatternFilterCondition] = []
     filters: list[DimensionFilterCondition] = []
 
     @model_validator(mode="before")

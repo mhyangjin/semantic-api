@@ -18,7 +18,7 @@ mappings:
       format: "{key}:{value}"
 
 joins:
-  - notifications
+  - notification
   - notification_status
   - notification_channels
   - recipient

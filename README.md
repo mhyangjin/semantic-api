@@ -25,6 +25,14 @@
 - **CORS 지원**: 다중 오리진 접근 허용
 - **JSON 로깅**: 구조화된 로깅으로 모니터링 용이
 
+### 프로젝트 장점
+
+- **도메인 친화적 질의 해석**: 비즈니스 용어를 메트릭/차원/테이블 메타데이터로 변환해 분석 진입 장벽을 낮춥니다.
+- **메타데이터 중심 확장성**: 코드 수정 없이 YAML 추가/변경만으로 분석 대상과 용어를 빠르게 확장할 수 있습니다.
+- **API + MCP 동시 제공**: REST API와 MCP 도구를 함께 제공해 웹 서비스와 AI 에이전트 환경을 모두 지원합니다.
+- **운영 편의성**: Docker Compose, CORS, JSON 구조화 로그를 기본 제공해 배포와 모니터링을 단순화합니다.
+- **모듈화된 구조**: loader/resolver/service/repository 계층 분리로 유지보수성과 테스트 용이성을 높였습니다.
+
 ### 기술 스택
 
 - **Framework**: FastAPI 0.140.7
@@ -242,7 +250,7 @@ display_name: 요청 수
 description: 총 요청 수
 type: metric
 aggregation: sum
-source_table: notifications
+source_table: notification
 ```
 
 ### 로깅
@@ -357,6 +365,14 @@ It offers complex data structures through simple and intuitive API interfaces, i
   - **Table**: Main data table definitions
 - **CORS Support**: Multiple origin access allowed
 - **JSON Logging**: Structured logging for easy monitoring
+
+### Project Advantages
+
+- **Domain-friendly query resolution**: Converts business terms into metric/dimension/table metadata, lowering the barrier to analytics.
+- **Metadata-first extensibility**: You can expand analysis scope and vocabulary quickly by editing YAML, without frequent code changes.
+- **API and MCP support together**: Provides both REST endpoints and MCP tools for web services and AI agent workflows.
+- **Operational simplicity**: Built-in Docker Compose setup, CORS support, and structured JSON logs make deployment and monitoring easier.
+- **Modular architecture**: Clear separation of loader/resolver/service/repository layers improves maintainability and testability.
 
 ### Technology Stack
 
@@ -575,7 +591,7 @@ display_name: Request Count
 description: Total number of requests
 type: metric
 aggregation: sum
-source_table: notifications
+source_table: notification
 ```
 
 ### Logging

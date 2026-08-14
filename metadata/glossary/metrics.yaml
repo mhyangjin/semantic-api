@@ -28,6 +28,15 @@ metrics:
     description: >
       발송 실패한 메시지 개수
 
+  - term: 요청 실패 건수
+    metric: request_fail_count
+    aliases:
+      - 요청 실패 건수
+      - 요청 실패 발송 건수
+      - 발송 요청 실패 건수
+    description: >
+      발송 실패한 메시지 개수
+
   - term: 발송 성공률
     metric: delivery_rate
     aliases:

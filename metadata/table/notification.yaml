@@ -1,4 +1,4 @@
-table_name: notifications
+table_name: notification
 business_name: 발송 요청
 description: >
   발송 요청의 상세 정보를 담고 있는 테이블입니다.

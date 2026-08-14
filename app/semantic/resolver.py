@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from .models import (
@@ -10,6 +11,7 @@ from .models import (
     DimensionFilterCondition,
     DimensionModel,
     FilterGlossary,
+    PatternFilterCondition,
     TableModel,
 )
 from .repository import MetadataRepository, MetricModel
@@ -303,7 +305,33 @@ class MetadataResolver:
 
         entry = self.resolve_filter_glossary(term)
 
-        return list(entry.filters)
+        matched_pattern, extracted_value = self._match_filter_pattern(term, entry)
+
+        if matched_pattern is None and self._entry_uses_pattern_value(entry):
+            raise ValueError(
+                f"Filter glossary term '{term}' requires a pattern match to "
+                "extract a value, but no pattern matched."
+            )
+
+        resolved_filters: list[DimensionFilterCondition] = []
+
+        for condition in entry.filters:
+            resolved_value = condition.value
+
+            if extracted_value is not None:
+                resolved_value = self._substitute_pattern_value(
+                    resolved_value,
+                    extracted_value,
+                )
+
+            resolved_filters.append(
+                condition.model_copy(
+                    update={"value": resolved_value},
+                    deep=True,
+                )
+            )
+
+        return resolved_filters
 
     def resolve_analysis_term(
         self,
@@ -869,6 +897,11 @@ class MetadataResolver:
                 matched_entries.append(entry)
 
         if not matched_entries:
+            for entry in entries:
+                if self._match_filter_pattern(term, entry)[0] is not None:
+                    matched_entries.append(entry)
+
+        if not matched_entries:
             raise KeyError(
                 f"Unknown {entity_name} glossary term: '{term}'."
             )
@@ -913,6 +946,78 @@ class MetadataResolver:
             )
 
         return candidates
+
+    @staticmethod
+    def _filter_patterns(entry: object) -> list[PatternFilterCondition]:
+        patterns = getattr(entry, "patterns", None) or []
+
+        return [
+            pattern
+            for pattern in patterns
+            if isinstance(pattern, PatternFilterCondition)
+        ]
+
+    def _match_filter_pattern(
+        self,
+        term: str,
+        entry: object,
+    ) -> tuple[PatternFilterCondition | None, str | None]:
+        normalized_term = str(term).strip()
+
+        for pattern in self._filter_patterns(entry):
+            if not pattern.regex:
+                continue
+
+            match = re.search(pattern.regex, normalized_term)
+
+            if not match:
+                continue
+
+            try:
+                return pattern, match.group(pattern.value_group)
+            except IndexError as exc:
+                raise ValueError(
+                    f"Filter glossary term '{getattr(entry, 'term', term)}' matched "
+                    f"regex '{pattern.regex}' but value_group {pattern.value_group} "
+                    "is out of range."
+                ) from exc
+
+        return None, None
+
+    @staticmethod
+    def _entry_uses_pattern_value(entry: object) -> bool:
+        for condition in getattr(entry, "filters", []) or []:
+            value = getattr(condition, "value", None)
+
+            if isinstance(value, str) and "{value}" in value:
+                return True
+
+        return False
+
+    @staticmethod
+    def _substitute_pattern_value(
+        value: object,
+        extracted_value: str,
+    ) -> object:
+        if isinstance(value, str):
+            return value.replace("{value}", extracted_value)
+
+        if isinstance(value, list):
+            return [
+                MetadataResolver._substitute_pattern_value(item, extracted_value)
+                for item in value
+            ]
+
+        if isinstance(value, dict):
+            return {
+                key: MetadataResolver._substitute_pattern_value(
+                    item,
+                    extracted_value,
+                )
+                for key, item in value.items()
+            }
+
+        return value
 
     # ======================================================
     # Internal: Common Helper

@@ -9,7 +9,7 @@ mappings:
       extract: suffix
 
 joins:
-  - notifications
+  - notification
   - notification_status
   - notification_channels
   - recipient

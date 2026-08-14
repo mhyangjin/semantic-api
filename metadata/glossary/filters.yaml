@@ -31,6 +31,7 @@ filters:
     aliases:
       - 요청 실패 건
       - 요청 실패건
+      - 요청 실패 건수
       - Request Fail
       - REQUEST FAIL
     filters:
@@ -313,3 +314,17 @@ filters:
     aliases:
       - 미열람
       - 오픈 안한
+      -
+  - term: 이벤트 아이디
+    patterns:
+      - regex: '^이벤트\s*(?:아이디|ID)?\s*(\d+)(?:번)?$'
+        value_group: 1
+    filter:
+      dimension: event
+      operator: "="
+      value: "{value}"
+    aliases:
+      - 이벤트 ID
+      - 이벤트
+    description: >
+      입력 문장에서 이벤트 ID를 추출하여 조회

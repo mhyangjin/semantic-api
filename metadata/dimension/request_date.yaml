@@ -4,7 +4,7 @@ description: >
   한국시간(KST) 기준 발송 요청 날짜
 
 mappings:
-  - table: notifications
+  - table: notification
     column: request_kst_date
 
   - table: notification_index
@@ -19,4 +19,4 @@ mappings:
 joins:
   - notification_status
   - recipient
-  - notifications
+  - notification

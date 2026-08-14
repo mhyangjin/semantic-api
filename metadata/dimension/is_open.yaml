@@ -9,5 +9,5 @@ mappings:
     column: is_open
 
 joins:
-  - notifications
+  - notification
   - recipient

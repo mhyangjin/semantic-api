@@ -19,6 +19,24 @@ class FilterConditionResponse(BaseModel):
     value: Any
 
 
+class MappingMetadataResponse(BaseModel):
+    table: str
+    column: str | None = None
+    business_name: str | None = None
+    resolver: dict[str, Any] | None = None
+    transform: dict[str, Any] | None = None
+    pattern: dict[str, Any] | None = None
+
+
+class DimensionMetadataResponse(BaseModel):
+    dimension_id: str
+    business_name: str
+    parameters: list[dict[str, Any]] = Field(default_factory=list)
+    mappings: list[MappingMetadataResponse] = Field(default_factory=list)
+    joins: list[str] = Field(default_factory=list)
+    description: str | None = None
+
+
 # ==========================================================
 # resolve_query
 # ==========================================================
@@ -44,6 +62,9 @@ class ResolveQueryResponse(BaseModel):
     metrics: list[str] = Field(default_factory=list)
     dimensions: list[str] = Field(default_factory=list)
     tables: list[str] = Field(default_factory=list)
+    dimension_details: list[DimensionMetadataResponse] = Field(
+        default_factory=list
+    )
 
     filters: list[FilterConditionResponse] = Field(
         default_factory=list

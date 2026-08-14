@@ -14,6 +14,7 @@ from .models import (
     ResolveQueryRequest,
     ResolveQueryResponse,
     FilterConditionResponse,
+    DimensionMetadataResponse,
     GetMetricRequest,
     GetDimensionRequest,
     GetTableRequest,
@@ -51,6 +52,9 @@ Input may contain:
 The tool returns resolved metrics,
 dimensions,
 tables and filters.
+
+It also returns detailed dimension metadata, including mappings
+and resolver pipelines, when available.
 """
 )
 def resolve_semantics(
@@ -77,6 +81,12 @@ def resolve_semantics(
         tables=[
             table.table_name
             for table in result.tables
+        ],
+        dimension_details=[
+            DimensionMetadataResponse.model_validate(
+                dimension.model_dump(exclude_none=True)
+            )
+            for dimension in result.dimensions
         ],
         filters=[
             FilterConditionResponse(

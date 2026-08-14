@@ -66,6 +66,9 @@ Output
 
 ResolveQueryResponse
 
+Includes summary fields plus detailed dimension metadata so resolver
+pipelines such as base64_decode can be surfaced to the LLM.
+
 ---
 
 get_metric()

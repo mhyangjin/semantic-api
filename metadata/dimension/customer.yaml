@@ -5,6 +5,8 @@ mapping:
   - table: inbox
     resolver:
       column: customer_id
+      pipeline:
+        - base64_decode: { }
 
   - table: recipient
     resolver:

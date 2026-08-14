@@ -21,6 +21,8 @@ columns:
   - name: customer_id
     business_name: 고객번호
     type: string
+    description: >
+      고객번호를 base64로 디코딩한 값이다.
 
   - name: notification_id
     business_name: 발송 요청 ID

@@ -54,6 +54,10 @@ class ResolveQueryRequest(BaseModel):
     patterns: list[str] = Field(default_factory=list)
 
 
+class BuildContextRequest(ResolveQueryRequest):
+    """SQL Agent용 컨텍스트 생성 요청."""
+
+
 class ResolveQueryResponse(BaseModel):
     """
     Resolver가 해석한 최종 Metadata 결과

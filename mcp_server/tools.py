@@ -19,6 +19,7 @@ from .models import (
     GetDimensionRequest,
     GetTableRequest,
     GetPatternRequest,
+    BuildContextRequest,
 )
 
 # ==========================================================
@@ -28,6 +29,30 @@ from .models import (
 service = create_service("./metadata")
 
 mcp = FastMCP("Semantic Layer")
+
+
+# ==========================================================
+# build_context
+# ==========================================================
+
+@mcp.tool(
+    name="build_context",
+    description=(
+        "Build the complete, compact Athena SQL context for a user request. "
+        "Use this as the primary tool before generating SQL; it resolves "
+        "business terms and returns metric definitions, dimension mappings, "
+        "filters, columns, and only the relevant joins in one call."
+    ),
+)
+def build_context(request: BuildContextRequest) -> dict:
+    context = service.build_context(
+        metrics=request.metrics,
+        dimensions=request.dimensions,
+        filters=request.filters,
+        analysis=request.analysis,
+        patterns=request.patterns,
+    )
+    return context.model_dump(exclude_none=True)
 
 
 # ==========================================================

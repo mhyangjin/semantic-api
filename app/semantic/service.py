@@ -6,6 +6,7 @@ from .resolver import (
     ResolvedQuery,
 )
 from .models import DimensionFilterCondition
+from .context import SemanticContext, build_semantic_context
 
 
 class SemanticService:
@@ -76,6 +77,25 @@ class SemanticService:
             analysis=analysis,
             patterns=patterns,
         )
+
+    def build_context(
+        self,
+        metrics: list[str] | None = None,
+        dimensions: list[str] | None = None,
+        filters: list[str] | None = None,
+        analysis: list[str] | None = None,
+        patterns: list[str] | None = None,
+    ) -> SemanticContext:
+        """Build a compact, self-contained context for a SQL agent."""
+
+        resolved = self.resolve_terms(
+            metrics=metrics,
+            dimensions=dimensions,
+            filters=filters,
+            analysis=analysis,
+            patterns=patterns,
+        )
+        return build_semantic_context(resolved)
 
     #
     # =====================================================

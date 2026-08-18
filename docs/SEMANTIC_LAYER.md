@@ -56,6 +56,15 @@ request_date BETWEEN ...
 
 ## MCP Tools
 
+build_context()
+
+Primary tool for SQL generation agents. Resolves business terms and returns a
+compact, self-contained Athena context containing metric definitions (including
+derived dependencies), dimension mappings, filters, columns, and only joins
+between tables required by the request.
+
+---
+
 resolve_semantics()
 
 Input

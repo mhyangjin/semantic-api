@@ -114,14 +114,14 @@ docker-compose logs -f semantic-mcp
 
 #### MCP Server로 사용하기
 
-현재 코드 기준으로 MCP 엔트리포인트는 `mcp/server.py`이며, 아래처럼 실행할 수 있습니다.
+현재 코드 기준으로 MCP 엔트리포인트는 `mcp_server/server.py`이며, 아래처럼 실행할 수 있습니다.
 
 ```bash
 # 방법 1: 모듈 실행
-python -m mcp.server
+python -m mcp_server.server
 
 # 방법 2: 파일 직접 실행
-python mcp/server.py
+python mcp_server/server.py
 ```
 
 MCP 클라이언트(예: Claude Desktop, Cursor, 기타 MCP 호환 클라이언트)에서 STDIO 서버로 등록할 때는 아래처럼 설정할 수 있습니다.
@@ -131,7 +131,7 @@ MCP 클라이언트(예: Claude Desktop, Cursor, 기타 MCP 호환 클라이언�
   "mcpServers": {
     "semantic-layer": {
       "command": "python",
-      "args": ["-m", "mcp.server"],
+      "args": ["-m", "mcp_server.server"],
       "cwd": "/absolute/path/to/semantic-api"
     }
   }
@@ -140,11 +140,31 @@ MCP 클라이언트(예: Claude Desktop, Cursor, 기타 MCP 호환 클라이언�
 
 제공되는 주요 MCP 도구:
 
-- `resolve_query`: 비즈니스 용어를 메타데이터(metric/dimension/table/filter)로 해석
+- `build_context`: SageMaker SQL Agent용 Athena 컨텍스트를 한 번에 생성하는 권장 도구
+- `resolve_semantics`: 비즈니스 용어를 메타데이터(metric/dimension/table/filter)로 해석
 - `get_metric`: 메트릭 상세 메타데이터 조회
 - `get_dimension`: 차원 상세 메타데이터 조회
 - `get_table`: 테이블 상세 메타데이터 조회
 - `get_pattern`: 분석 패턴 해석 결과 조회
+
+SageMaker Agent가 SQL을 생성할 때는 여러 메타데이터 도구를 개별 호출하는 대신
+`build_context`를 먼저 호출하는 것을 권장합니다. 이 도구는 파생 메트릭의 하위
+메트릭, 차원 매핑, 필터, 테이블 컬럼 및 요청에 필요한 테이블 사이의 조인만 포함한
+압축된 Athena 컨텍스트를 반환합니다.
+
+요청 예시:
+
+```json
+{
+  "request": {
+    "metrics": ["발송 성공률"],
+    "dimensions": ["채널"],
+    "filters": ["지난달"],
+    "analysis": [],
+    "patterns": []
+  }
+}
+```
 
 ### 환경 변수 설정
 
@@ -455,14 +475,14 @@ docker-compose logs -f semantic-mcp
 
 #### Using as an MCP Server
 
-Based on the current code, the MCP entry point is `mcp/server.py`, and you can run it as follows.
+Based on the current code, the MCP entry point is `mcp_server/server.py`, and you can run it as follows.
 
 ```bash
 # Option 1: run as a module
-python -m mcp.server
+python -m mcp_server.server
 
 # Option 2: run the file directly
-python mcp/server.py
+python mcp_server/server.py
 ```
 
 When registering this as a STDIO server in an MCP client (for example, Claude Desktop, Cursor, or other MCP-compatible clients), you can use a config like this.
@@ -472,7 +492,7 @@ When registering this as a STDIO server in an MCP client (for example, Claude De
   "mcpServers": {
     "semantic-layer": {
       "command": "python",
-      "args": ["-m", "mcp.server"],
+      "args": ["-m", "mcp_server.server"],
       "cwd": "/absolute/path/to/semantic-api"
     }
   }
@@ -481,11 +501,31 @@ When registering this as a STDIO server in an MCP client (for example, Claude De
 
 Main MCP tools provided:
 
-- `resolve_query`: Resolve business terms into metric/dimension/table/filter metadata
+- `build_context`: Recommended one-call Athena context builder for SageMaker SQL agents
+- `resolve_semantics`: Resolve business terms into metric/dimension/table/filter metadata
 - `get_metric`: Get detailed metadata for a metric
 - `get_dimension`: Get detailed metadata for a dimension
 - `get_table`: Get detailed metadata for a table
 - `get_pattern`: Get resolved metadata for an analysis pattern
+
+When a SageMaker Agent generates SQL, call `build_context` first instead of
+fetching each metadata object separately. It returns a compact Athena context
+containing derived metric dependencies, dimension mappings, filters, table
+columns, and only the joins between tables required by the request.
+
+Example request:
+
+```json
+{
+  "request": {
+    "metrics": ["delivery_rate"],
+    "dimensions": ["channel"],
+    "filters": [],
+    "analysis": [],
+    "patterns": []
+  }
+}
+```
 
 ### Environment Variables
 

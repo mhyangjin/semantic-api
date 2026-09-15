@@ -170,6 +170,17 @@ filters:
   #
   # 날짜(Date)
   #
+  - term: 날짜 범위
+    patterns:
+      - regex: '^(\d{4}-\d{2}-\d{2}\s*부터\s*\d{4}-\d{2}-\d{2}\s*까지)$'
+        value_group: 1
+    filters:
+      - dimension: request_date
+        operator: between
+        value: "explicit_range:{value}"
+    description: >
+      YYYY-MM-DD부터 YYYY-MM-DD까지 명시한 날짜 범위. 시작일과 종료일을 모두 포함한다.
+
   - term: 오늘
     filters:
       - dimension: request_date

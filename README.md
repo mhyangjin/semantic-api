@@ -183,6 +183,10 @@ SageMaker Agent가 SQL을 생성할 때는 여러 메타데이터 도구를 개�
 메트릭, 차원 매핑, 필터, 테이블 컬럼 및 요청에 필요한 테이블 사이의 조인만 포함한
 압축된 Athena 컨텍스트를 반환합니다.
 
+`build_context`는 glossary term뿐 아니라 alias도 직접 해석합니다. 선택적인
+`question`에 원문 질문을 전달하면 조직 ID 같은 자유 입력 dimension 값을 추출해
+`literal_dimension_filters`로 반환하고 필요한 dimension metadata도 함께 추가합니다.
+
 `build_context`가 미정의 용어 오류를 반환하면 `search_glossary`에 해당 용어를
 전달해 `metrics`, `dimensions`, `filters`, `analysis`, `patterns`별 후보를 조회할
 수 있습니다. 반환값은 alias가 아닌 다시 요청에 사용할 canonical 용어입니다.
@@ -196,7 +200,8 @@ SageMaker Agent가 SQL을 생성할 때는 여러 메타데이터 도구를 개�
     "dimensions": ["채널"],
     "filters": ["지난달"],
     "analysis": [],
-    "patterns": []
+    "patterns": [],
+    "question": "지난달 조직 sample_team_01의 성공수를 알려줘"
   }
 }
 ```
@@ -549,6 +554,11 @@ fetching each metadata object separately. It returns a compact Athena context
 containing derived metric dependencies, dimension mappings, filters, table
 columns, and only the joins between tables required by the request.
 
+`build_context` resolves glossary aliases directly. When the optional `question`
+contains a free-form dimension value such as an organization ID, the service
+returns it in `literal_dimension_filters` and includes the required dimension
+metadata.
+
 If `build_context` rejects a term, pass it to `search_glossary` to retrieve
 canonical candidates grouped under `metrics`, `dimensions`, `filters`,
 `analysis`, and `patterns`.
@@ -562,7 +572,8 @@ Example request:
     "dimensions": ["channel"],
     "filters": [],
     "analysis": [],
-    "patterns": []
+    "patterns": [],
+    "question": "Show last month's results for organization sample_team_01"
   }
 }
 ```

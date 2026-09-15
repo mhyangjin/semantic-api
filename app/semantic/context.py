@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -43,6 +45,30 @@ def _athena_filter_expression(condition: DimensionFilterCondition) -> str | None
 
     if condition.dimension != "request_date":
         return None
+    if isinstance(condition.value, str) and condition.value.startswith(
+        "explicit_range:"
+    ):
+        value = condition.value.removeprefix("explicit_range:")
+        match = re.fullmatch(
+            r"(\d{4}-\d{2}-\d{2})\s*부터\s*(\d{4}-\d{2}-\d{2})\s*까지",
+            value,
+        )
+        if not match:
+            raise ValueError(f"Invalid explicit date range: {value}")
+        start, end = match.groups()
+        try:
+            start_date = date.fromisoformat(start)
+            end_date = date.fromisoformat(end)
+        except ValueError as exc:
+            raise ValueError(f"Invalid explicit date range: {value}") from exc
+        if start_date > end_date:
+            raise ValueError(
+                f"Explicit date range start must not be after end: {value}"
+            )
+        return (
+            f"{{alias}}.request_kst_date >= '{start}' "
+            f"AND {{alias}}.request_kst_date <= '{end}'"
+        )
     week_start = (
         "date_trunc('week', current_timestamp AT TIME ZONE 'Asia/Seoul')"
     )
@@ -75,6 +101,13 @@ class ContextTable(BaseModel):
     joins: list[Join] = Field(default_factory=list)
 
 
+class LiteralDimensionFilter(BaseModel):
+    dimension: str
+    business_name: str
+    value: str
+    sql_value: str
+
+
 class SemanticContext(BaseModel):
     """All metadata required to generate SQL without follow-up lookups."""
 
@@ -85,6 +118,9 @@ class SemanticContext(BaseModel):
     dimensions: list[DimensionModel] = Field(default_factory=list)
     tables: list[ContextTable] = Field(default_factory=list)
     filters: list[DimensionFilterCondition] = Field(default_factory=list)
+    literal_dimension_filters: list[LiteralDimensionFilter] = Field(
+        default_factory=list
+    )
 
 
 def build_semantic_context(resolved: ResolvedQuery) -> SemanticContext:

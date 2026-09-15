@@ -89,6 +89,8 @@ dimensions:
       - 날짜
       - 일자
       - 요청일자
+      - 발송 일자
+      - 발송일자
     description: >
       메시지 발송 요청일(KST)
 

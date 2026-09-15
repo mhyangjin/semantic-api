@@ -57,6 +57,8 @@ class ResolveQueryRequest(BaseModel):
 class BuildContextRequest(ResolveQueryRequest):
     """SQL Agent용 컨텍스트 생성 요청."""
 
+    question: str | None = None
+
 
 class ResolveQueryResponse(BaseModel):
     """

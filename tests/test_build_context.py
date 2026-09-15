@@ -21,7 +21,6 @@ def test_service_build_context_is_self_contained_and_compact() -> None:
     ]
     assert {table.table_name for table in context.tables} == {
         "notification_status",
-        "recipient",
         "notification_channels",
     }
     assert all(
@@ -107,6 +106,38 @@ def test_search_glossary_resolves_customer_number_alias() -> None:
     ).dimensions[0] == "고객"
 
 
+def test_build_context_resolves_metric_and_dimension_aliases() -> None:
+    result = build_context(BuildContextRequest(
+        metrics=["발송 성공한 수"],
+        dimensions=["발송 일자"],
+        filters=["지난주"],
+    ))
+
+    assert result["metrics"][0]["metric_name"] == "send_success_count"
+    assert {item["dimension_id"] for item in result["dimensions"]} >= {
+        "request_date"
+    }
+    assert result["filters"][0]["value"] == "previous_week"
+
+
+def test_build_context_resolves_literal_organization_from_question() -> None:
+    result = build_context(BuildContextRequest(
+        metrics=["성공수"],
+        filters=["어제"],
+        question="어제 조직 sample_team_01의 성공수를 알려줘.",
+    ))
+
+    assert {item["dimension_id"] for item in result["dimensions"]} >= {
+        "organization"
+    }
+    assert result["literal_dimension_filters"] == [{
+        "dimension": "organization",
+        "business_name": "조직",
+        "value": "sample_team_01",
+        "sql_value": "OR#sample_team_01",
+    }]
+
+
 def test_customer_dimension_context_contains_compiled_athena_expressions() -> None:
     result = build_context(BuildContextRequest(dimensions=["고객"]))
     mappings = result["dimensions"][0]["mappings"]
@@ -129,3 +160,18 @@ def test_previous_week_and_month_filters_contain_athena_expressions() -> None:
     assert "{alias}.request_kst_date" in week_sql
     assert "date_add('month', -1, date_trunc('month'" in month_sql
     assert "{alias}.request_kst_date" in month_sql
+
+
+def test_explicit_date_range_contains_safe_athena_expression() -> None:
+    result = build_context(BuildContextRequest(
+        metrics=["발송 요청 수"],
+        filters=["2026-09-01부터 2026-09-07까지"],
+    ))
+
+    assert result["filters"][0]["value"] == (
+        "explicit_range:2026-09-01부터 2026-09-07까지"
+    )
+    assert result["filters"][0]["sql_expression"] == (
+        "{alias}.request_kst_date >= '2026-09-01' "
+        "AND {alias}.request_kst_date <= '2026-09-07'"
+    )

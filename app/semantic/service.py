@@ -10,6 +10,7 @@ from .resolver import (
 )
 from .models import DimensionFilterCondition
 from .context import SemanticContext, build_semantic_context
+from .value_resolver import resolve_literal_dimension_filters
 
 
 class SemanticService:
@@ -88,17 +89,25 @@ class SemanticService:
         filters: list[str] | None = None,
         analysis: list[str] | None = None,
         patterns: list[str] | None = None,
+        question: str | None = None,
     ) -> SemanticContext:
         """Build a compact, self-contained context for a SQL agent."""
 
+        literal_filters = resolve_literal_dimension_filters(question)
+        requested_dimensions = list(dimensions or [])
+        for literal_filter in literal_filters:
+            if literal_filter.business_name not in requested_dimensions:
+                requested_dimensions.append(literal_filter.business_name)
         resolved = self.resolve_terms(
             metrics=metrics,
-            dimensions=dimensions,
+            dimensions=requested_dimensions,
             filters=filters,
             analysis=analysis,
             patterns=patterns,
         )
-        return build_semantic_context(resolved)
+        context = build_semantic_context(resolved)
+        context.literal_dimension_filters = literal_filters
+        return context
 
     def search_glossary(self, term: str, limit: int = 5) -> dict[str, list[str]]:
         """Alias를 포함해 입력과 유사한 canonical glossary 용어를 반환한다."""

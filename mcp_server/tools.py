@@ -53,6 +53,7 @@ def build_context(request: BuildContextRequest) -> dict:
         filters=request.filters,
         analysis=request.analysis,
         patterns=request.patterns,
+        question=request.question,
     )
     return context.model_dump(exclude_none=True)
 

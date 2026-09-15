@@ -8,6 +8,7 @@ class DimensionFilterCondition(BaseModel):
     dimension: str
     operator: str
     value: Any
+    sql_expression: Optional[str] = None
 
 class PatternFilterCondition(BaseModel):
     regex: str
@@ -33,6 +34,7 @@ class Mapping(BaseModel):
     resolver: Optional[dict[str, Any]] = None
     transform: Optional[dict[str, Any]] = None
     pattern: Optional[MappingPattern] = None
+    sql_expression: Optional[str] = None
 
 class Parameter(BaseModel):
     name: str
@@ -264,6 +266,4 @@ class AnalysisPatternModel(BaseModel):
 
     class Config:
         extra = "forbid"
-
-
 

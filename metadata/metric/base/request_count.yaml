@@ -4,7 +4,7 @@ description: >
   발송 요청된 전체 건수
 
 aggregate: count
-table: recipient
+table: notification_status
 filter:
   - column: status
     operator: "="

@@ -17,6 +17,58 @@ from .models import (
 from .resolver import ResolvedQuery
 
 
+def _athena_resolver_expression(mapping) -> str | None:
+    """Compile a dimension resolver pipeline into an agent-ready Athena expression."""
+
+    resolver = mapping.resolver or {}
+    column = resolver.get("column")
+    if not column:
+        return None
+    expression = f"{{alias}}.{column}"
+    for step in resolver.get("pipeline") or []:
+        if "split" in step:
+            options = step["split"] or {}
+            delimiter = str(options.get("delimiter", ".")).replace("'", "''")
+            index = int(options.get("index", 0)) + 1
+            expression = f"split_part({expression}, '{delimiter}', {index})"
+        elif "base64_decode" in step:
+            expression = f"from_utf8(from_base64({expression}))"
+        else:
+            return None
+    return expression
+
+
+def _athena_filter_expression(condition: DimensionFilterCondition) -> str | None:
+    """Compile semantic relative-date values into complete Athena predicates."""
+
+    if condition.dimension != "request_date":
+        return None
+    week_start = (
+        "date_trunc('week', current_timestamp AT TIME ZONE 'Asia/Seoul')"
+    )
+    month_start = (
+        "date_trunc('month', current_timestamp AT TIME ZONE 'Asia/Seoul')"
+    )
+    ranges = {
+        "previous_week": (
+            f"date_add('week', -1, {week_start})",
+            week_start,
+        ),
+        "previous_month": (
+            f"date_add('month', -1, {month_start})",
+            month_start,
+        ),
+    }
+    boundaries = ranges.get(condition.value)
+    if not boundaries:
+        return None
+    lower, upper = boundaries
+    return (
+        f"{{alias}}.request_kst_date >= CAST(CAST({lower} AS date) AS varchar) "
+        f"AND {{alias}}.request_kst_date < CAST(CAST({upper} AS date) AS varchar)"
+    )
+
+
 class ContextTable(BaseModel):
     table_name: str
     columns: list[dict[str, Any]] = Field(default_factory=list)
@@ -44,11 +96,20 @@ def build_semantic_context(resolved: ResolvedQuery) -> SemanticContext:
         for table in resolved.tables
     ]
 
+    dimensions = [dimension.model_copy(deep=True) for dimension in resolved.dimensions]
+    for dimension in dimensions:
+        for mapping in dimension.mappings or []:
+            mapping.sql_expression = _athena_resolver_expression(mapping)
+
+    filters = [condition.model_copy(deep=True) for condition in resolved.filters]
+    for condition in filters:
+        condition.sql_expression = _athena_filter_expression(condition)
+
     return SemanticContext(
         metrics=resolved.metrics,
-        dimensions=resolved.dimensions,
+        dimensions=dimensions,
         tables=tables,
-        filters=resolved.filters,
+        filters=filters,
     )
 
 

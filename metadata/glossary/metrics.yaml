@@ -4,7 +4,9 @@ metrics:
   - term: 발송 건수
     metric: request_count
     aliases:
+      - 요청수
       - 요청 건수
+      - 발송 요청수
       - 발송 요청 건수
       - 발송량
       - 메시지 발송 건수
@@ -14,7 +16,10 @@ metrics:
   - term: 발송 성공 건수
     metric: send_success_count
     aliases:
+      - 성공수
       - 성공 건수
+      - 발송 성공수
+      - 발송성공수
       - 성공 발송 건수
       - 성공 메시지 수
     description: >

@@ -113,6 +113,7 @@ class GetPatternRequest(BaseModel):
 
 class SearchGlossaryRequest(BaseModel):
     term: str
+    limit: int = Field(default=5, ge=1, le=20)
 
 
 class SearchGlossaryResponse(BaseModel):
@@ -120,3 +121,4 @@ class SearchGlossaryResponse(BaseModel):
     dimensions: list[str] = Field(default_factory=list)
     filters: list[str] = Field(default_factory=list)
     analysis: list[str] = Field(default_factory=list)
+    patterns: list[str] = Field(default_factory=list)

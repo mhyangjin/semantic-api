@@ -4,6 +4,7 @@ dimensions:
     dimension: customer
     aliases:
       - 고객ID
+      - 고객번호
       - 고객 번호
       - 수신 고객
       - 고객별

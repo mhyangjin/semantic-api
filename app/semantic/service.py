@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from difflib import SequenceMatcher
+import re
+
 from .repository import MetadataRepository
 from .resolver import (
     MetadataResolver,
@@ -96,6 +99,76 @@ class SemanticService:
             patterns=patterns,
         )
         return build_semantic_context(resolved)
+
+    def search_glossary(self, term: str, limit: int = 5) -> dict[str, list[str]]:
+        """Alias를 포함해 입력과 유사한 canonical glossary 용어를 반환한다."""
+
+        normalized_query = self._normalize_search_text(term)
+        if not normalized_query:
+            raise ValueError("Search term must not be empty.")
+
+        sources = {
+            "metrics": getattr(
+                self.repository.get_metric_glossary(), "metrics", []
+            ),
+            "dimensions": getattr(
+                self.repository.get_dimension_glossary(), "dimensions", []
+            ),
+            "filters": getattr(
+                self.repository.get_filter_glossary(), "filters", []
+            ),
+            "analysis": getattr(
+                self.repository.get_analysis_glossary(), "analysis", []
+            ),
+        }
+        result = {
+            category: self._rank_glossary_entries(
+                normalized_query, entries, limit
+            )
+            for category, entries in sources.items()
+        }
+        result["patterns"] = self._rank_patterns(normalized_query, limit)
+        return result
+
+    @staticmethod
+    def _normalize_search_text(value: str) -> str:
+        return re.sub(r"\s+", "", value).casefold()
+
+    @classmethod
+    def _similarity(cls, query: str, candidate: str) -> float:
+        normalized_candidate = cls._normalize_search_text(candidate)
+        if not normalized_candidate:
+            return 0.0
+        if query == normalized_candidate:
+            return 1.0
+        ratio = SequenceMatcher(None, query, normalized_candidate).ratio()
+        if query in normalized_candidate or normalized_candidate in query:
+            ratio = max(ratio, 0.8)
+        return ratio
+
+    @classmethod
+    def _rank_glossary_entries(
+        cls, query: str, entries: list[object], limit: int
+    ) -> list[str]:
+        ranked: list[tuple[float, str]] = []
+        for entry in entries:
+            canonical = str(getattr(entry, "term", ""))
+            candidates = [canonical, *(getattr(entry, "aliases", []) or [])]
+            score = max(cls._similarity(query, value) for value in candidates)
+            if score >= 0.35:
+                ranked.append((score, canonical))
+        ranked.sort(key=lambda item: (-item[0], item[1]))
+        return [canonical for _, canonical in ranked[:limit]]
+
+    def _rank_patterns(self, query: str, limit: int) -> list[str]:
+        ranked: list[tuple[float, str]] = []
+        for pattern_id, pattern in self.repository.list_patterns().items():
+            candidates = [pattern_id, pattern.business_name]
+            score = max(self._similarity(query, value) for value in candidates)
+            if score >= 0.35:
+                ranked.append((score, pattern_id))
+        ranked.sort(key=lambda item: (-item[0], item[1]))
+        return [pattern_id for _, pattern_id in ranked[:limit]]
 
     #
     # =====================================================

@@ -171,6 +171,7 @@ MCP 클라이언트(예: Claude Desktop, Cursor, 기타 MCP 호환 클라이언�
 제공되는 주요 MCP 도구:
 
 - `build_context`: SageMaker SQL Agent용 Athena 컨텍스트를 한 번에 생성하는 권장 도구
+- `search_glossary`: 미인식 용어와 유사한 canonical 후보를 분류별로 검색
 - `resolve_semantics`: 비즈니스 용어를 메타데이터(metric/dimension/table/filter)로 해석
 - `get_metric`: 메트릭 상세 메타데이터 조회
 - `get_dimension`: 차원 상세 메타데이터 조회
@@ -181,6 +182,10 @@ SageMaker Agent가 SQL을 생성할 때는 여러 메타데이터 도구를 개�
 `build_context`를 먼저 호출하는 것을 권장합니다. 이 도구는 파생 메트릭의 하위
 메트릭, 차원 매핑, 필터, 테이블 컬럼 및 요청에 필요한 테이블 사이의 조인만 포함한
 압축된 Athena 컨텍스트를 반환합니다.
+
+`build_context`가 미정의 용어 오류를 반환하면 `search_glossary`에 해당 용어를
+전달해 `metrics`, `dimensions`, `filters`, `analysis`, `patterns`별 후보를 조회할
+수 있습니다. 반환값은 alias가 아닌 다시 요청에 사용할 canonical 용어입니다.
 
 요청 예시:
 
@@ -532,6 +537,7 @@ When registering this as a STDIO server in an MCP client (for example, Claude De
 Main MCP tools provided:
 
 - `build_context`: Recommended one-call Athena context builder for SageMaker SQL agents
+- `search_glossary`: Find canonical candidates for an unrecognized term, grouped by field
 - `resolve_semantics`: Resolve business terms into metric/dimension/table/filter metadata
 - `get_metric`: Get detailed metadata for a metric
 - `get_dimension`: Get detailed metadata for a dimension
@@ -542,6 +548,10 @@ When a SageMaker Agent generates SQL, call `build_context` first instead of
 fetching each metadata object separately. It returns a compact Athena context
 containing derived metric dependencies, dimension mappings, filters, table
 columns, and only the joins between tables required by the request.
+
+If `build_context` rejects a term, pass it to `search_glossary` to retrieve
+canonical candidates grouped under `metrics`, `dimensions`, `filters`,
+`analysis`, and `patterns`.
 
 Example request:
 

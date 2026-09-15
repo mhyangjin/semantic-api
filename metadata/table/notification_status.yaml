@@ -82,7 +82,7 @@ columns:
       수신자 번호를 base64로 디코딩 한 후 '.'을 붙이고,뒤에 uuid를 붙여서 고객 메시지 ID를 생성한다.
 
   - name: status
-    business_name: 처리 상태, 혹은 채널
+    business_name: 처리 상태, 혹은 발송 채널
     enum:
       REQUEST: 발송 요청
       SMS: SMS 발송

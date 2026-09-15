@@ -20,6 +20,8 @@ from .models import (
     GetTableRequest,
     GetPatternRequest,
     BuildContextRequest,
+    SearchGlossaryRequest,
+    SearchGlossaryResponse,
 )
 
 # ==========================================================
@@ -53,6 +55,23 @@ def build_context(request: BuildContextRequest) -> dict:
         patterns=request.patterns,
     )
     return context.model_dump(exclude_none=True)
+
+
+# ==========================================================
+# search_glossary
+# ==========================================================
+
+@mcp.tool(
+    name="search_glossary",
+    description=(
+        "Find canonical semantic glossary terms similar to an unrecognized term. "
+        "Returns candidates grouped by semantic request field."
+    ),
+)
+def search_glossary(request: SearchGlossaryRequest) -> SearchGlossaryResponse:
+    return SearchGlossaryResponse.model_validate(
+        service.search_glossary(term=request.term, limit=request.limit)
+    )
 
 
 # ==========================================================

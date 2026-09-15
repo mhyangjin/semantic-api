@@ -22,7 +22,8 @@ columns:
     business_name: 고객번호
     type: string
     description: >
-      고객번호를 base64로 디코딩한 값이다.
+      Base64로 인코딩되어 저장된 고객번호 원문이다. 고객번호로 반환할 때는
+      dimension resolver의 base64_decode pipeline을 적용해야 한다.
 
   - name: notification_id
     business_name: 발송 요청 ID

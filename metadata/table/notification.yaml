@@ -78,9 +78,10 @@ columns:
     type:
 
   - name: request_channel_id
-    business_name: 요청 채널
+    business_name: 발송 요청 채널
     type: string
 
   - name: request_kst_date
     business_name: 한국기준 요청 날짜
     type: string
+    description: YYYY-MM-DD 형식의 한국시간(KST) 기준 발송 요청 날짜 문자열

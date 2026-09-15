@@ -615,6 +615,11 @@ class MetadataResolver:
 
         resolved_metrics = self._resolve_metrics(metric_names)
 
+        resolved_filters = list(filters or [])
+        dimension_names = self._deduplicate_strings([
+            *dimension_names,
+            *(condition.dimension for condition in resolved_filters),
+        ])
         resolved_dimensions = [
             self.resolve_dimension(dimension_name)
             for dimension_name in dimension_names
@@ -629,7 +634,7 @@ class MetadataResolver:
             metrics=resolved_metrics,
             dimensions=resolved_dimensions,
             tables=tables,
-            filters=list(filters or []),
+            filters=resolved_filters,
         )
 
     def resolve_terms(
@@ -695,6 +700,15 @@ class MetadataResolver:
             deduplicated_dimensions.append(dimension)
 
         resolved_filters = self._resolve_filter_terms(filter_terms)
+
+        for condition in resolved_filters:
+            dimension_name = condition.dimension
+            if dimension_name in seen_dimension_names:
+                continue
+            seen_dimension_names.add(dimension_name)
+            deduplicated_dimensions.append(
+                self.resolve_dimension(dimension_name)
+            )
 
         metric_names = [
             metric.metric_name

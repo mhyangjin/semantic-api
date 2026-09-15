@@ -251,6 +251,9 @@ class MetadataRepository :
     def get_pattern(self, name) :
         return self._registry.pattern(name)
 
+    def list_patterns(self) -> dict[str, AnalysisPatternModel]:
+        return dict(self._registry.patterns)
+
     def get_metric_glossary(self) :
         return self._registry.metric_glossary
 

@@ -8,6 +8,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.semantic.context import LiteralPredicate
+
 
 # ==========================================================
 # Common
@@ -58,6 +60,7 @@ class BuildContextRequest(ResolveQueryRequest):
     """SQL Agent용 컨텍스트 생성 요청."""
 
     question: str | None = None
+    literal_filters: list[LiteralPredicate] = Field(default_factory=list)
 
 
 class ResolveQueryResponse(BaseModel):

@@ -104,8 +104,20 @@ class ContextTable(BaseModel):
 class LiteralDimensionFilter(BaseModel):
     dimension: str
     business_name: str
+    operator: Literal["="] = "="
     value: str
     sql_value: str
+    table: str | None = None
+    column: str | None = None
+    sql_expression: str | None = None
+
+
+class LiteralPredicate(BaseModel):
+    """Typed raw value that must never pass through glossary resolution."""
+
+    dimension: str
+    operator: Literal["="] = "="
+    value: str = Field(min_length=1)
 
 
 class SemanticContext(BaseModel):

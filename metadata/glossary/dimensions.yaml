@@ -57,6 +57,18 @@ dimensions:
     description: >
       메시지가 속한 이벤트
 
+  - term: 발신지
+    dimension: source
+    aliases:
+      - 발신지ID
+      - 발송지
+      - 발송지ID
+      - 소스
+      - 발송지
+      - SOURCE
+    description: >
+      메시지가 발송된 발신지
+
   - term: 서비스
     dimension: service
     aliases:
@@ -112,6 +124,22 @@ dimensions:
       - 처리 결과
     description: >
       SUCCESS / FAIL 등의 발송 결과
+
+  - term: 요청 처리 결과
+    dimension: request_result
+    aliases:
+      - 요청 결과
+    description: >
+      notification_status에 기록된 요청 처리 결과
+
+  - term: 요청 에러 메시지
+    dimension: request_error_reason
+    aliases:
+      - 요청 에러 메세지
+      - 요청 오류 메시지
+      - 요청 오류 메세지
+    description: >
+      notification_status에 기록된 요청 처리 실패 사유
 
   - term: 상태
     dimension: status

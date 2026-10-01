@@ -43,7 +43,11 @@ mcp = FastMCP("Semantic Layer")
         "Build the complete, compact Athena SQL context for a user request. "
         "Use this as the primary tool before generating SQL; it resolves "
         "business terms and returns metric definitions, dimension mappings, "
-        "filters, columns, and only the relevant joins in one call."
+        "filters, columns, and only the relevant joins in one call. Pass the "
+        "full natural-language request in question so literal dimension values "
+        "such as '발신지 FLARELANE' are preserved instead of glossary-corrected. "
+        "Prefer the typed literal_filters field for all raw values; filters is "
+        "reserved for registered glossary terms."
     ),
 )
 def build_context(request: BuildContextRequest) -> dict:
@@ -54,6 +58,7 @@ def build_context(request: BuildContextRequest) -> dict:
         analysis=request.analysis,
         patterns=request.patterns,
         question=request.question,
+        literal_filters=request.literal_filters,
     )
     return context.model_dump(exclude_none=True)
 
@@ -66,7 +71,9 @@ def build_context(request: BuildContextRequest) -> dict:
     name="search_glossary",
     description=(
         "Find canonical semantic glossary terms similar to an unrecognized term. "
-        "Returns candidates grouped by semantic request field."
+        "Returns candidates grouped by semantic request field. Do not use this "
+        "for a literal value that follows a known dimension label (for example, "
+        "FLARELANE in '발신지 FLARELANE'); pass the full request to build_context."
     ),
 )
 def search_glossary(request: SearchGlossaryRequest) -> SearchGlossaryResponse:

@@ -9,9 +9,6 @@ filter:
   - column: status
     operator: "="
     value: REQUEST
-  - column: result
-    operator: "="
-    value: SUCCESS
 supported_dimensions:
   - request_date
   - customer

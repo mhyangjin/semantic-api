@@ -1,0 +1,15 @@
+dimension_id: source
+business_name: 발신지
+
+mappings:
+  - table: notification_index
+    column: index
+    pattern:
+      prefix: "SOURCE:"
+      extract: suffix
+
+joins:
+  - notification
+  - notification_status
+  - notification_channels
+  - recipient

@@ -186,6 +186,9 @@ SageMaker Agent가 SQL을 생성할 때는 여러 메타데이터 도구를 개�
 `build_context`는 glossary term뿐 아니라 alias도 직접 해석합니다. 선택적인
 `question`에 원문 질문을 전달하면 조직 ID 같은 자유 입력 dimension 값을 추출해
 `literal_dimension_filters`로 반환하고 필요한 dimension metadata도 함께 추가합니다.
+새 호출에서는 자유 입력값을 `literal_filters`에 구조화해 전달하는 방식을 권장합니다.
+`filters`는 glossary 용어 전용이며 `literal_filters[].value`는 glossary 검색이나
+유사도 교정을 거치지 않습니다.
 
 `build_context`가 미정의 용어 오류를 반환하면 `search_glossary`에 해당 용어를
 전달해 `metrics`, `dimensions`, `filters`, `analysis`, `patterns`별 후보를 조회할
@@ -199,6 +202,9 @@ SageMaker Agent가 SQL을 생성할 때는 여러 메타데이터 도구를 개�
     "metrics": ["발송 성공률"],
     "dimensions": ["채널"],
     "filters": ["지난달"],
+    "literal_filters": [
+      {"dimension": "organization", "operator": "=", "value": "sample_team_01"}
+    ],
     "analysis": [],
     "patterns": [],
     "question": "지난달 조직 sample_team_01의 성공수를 알려줘"
@@ -558,6 +564,9 @@ columns, and only the joins between tables required by the request.
 contains a free-form dimension value such as an organization ID, the service
 returns it in `literal_dimension_filters` and includes the required dimension
 metadata.
+New callers should send raw values as typed `literal_filters`. The `filters`
+array is reserved for glossary terms, and `literal_filters[].value` never enters
+glossary search or fuzzy correction.
 
 If `build_context` rejects a term, pass it to `search_glossary` to retrieve
 canonical candidates grouped under `metrics`, `dimensions`, `filters`,
@@ -571,6 +580,9 @@ Example request:
     "metrics": ["delivery_rate"],
     "dimensions": ["channel"],
     "filters": [],
+    "literal_filters": [
+      {"dimension": "organization", "operator": "=", "value": "sample_team_01"}
+    ],
     "analysis": [],
     "patterns": [],
     "question": "Show last month's results for organization sample_team_01"

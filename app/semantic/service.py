@@ -9,7 +9,12 @@ from .resolver import (
     ResolvedQuery,
 )
 from .models import DimensionFilterCondition
-from .context import SemanticContext, build_semantic_context
+from .context import (
+    LiteralDimensionFilter,
+    LiteralPredicate,
+    SemanticContext,
+    build_semantic_context,
+)
 from .value_resolver import resolve_literal_dimension_filters
 
 
@@ -90,24 +95,107 @@ class SemanticService:
         analysis: list[str] | None = None,
         patterns: list[str] | None = None,
         question: str | None = None,
+        literal_filters: list[LiteralPredicate] | None = None,
     ) -> SemanticContext:
         """Build a compact, self-contained context for a SQL agent."""
 
-        literal_filters = resolve_literal_dimension_filters(question)
+        resolved_literal_filters = resolve_literal_dimension_filters(question)
+        for literal_filter in literal_filters or []:
+            resolved_literal_filters.extend(
+                self._resolve_literal_predicate(literal_filter)
+            )
+        semantic_filters: list[str] = []
+        for filter_term in filters or []:
+            resolved_literals = resolve_literal_dimension_filters(filter_term)
+            if not resolved_literals:
+                if any(
+                    filter_term.casefold() == literal.value.casefold()
+                    for literal in resolved_literal_filters
+                ):
+                    continue
+                semantic_filters.append(filter_term)
+                continue
+            for literal_filter in resolved_literals:
+                if literal_filter not in resolved_literal_filters:
+                    resolved_literal_filters.append(literal_filter)
         requested_dimensions = list(dimensions or [])
-        for literal_filter in literal_filters:
+        for literal_filter in resolved_literal_filters:
             if literal_filter.business_name not in requested_dimensions:
                 requested_dimensions.append(literal_filter.business_name)
         resolved = self.resolve_terms(
             metrics=metrics,
             dimensions=requested_dimensions,
-            filters=filters,
+            filters=semantic_filters,
             analysis=analysis,
             patterns=patterns,
         )
         context = build_semantic_context(resolved)
-        context.literal_dimension_filters = literal_filters
+        context.literal_dimension_filters = [
+            self._compile_literal_filter(item)
+            for item in self._deduplicate_literal_filters(resolved_literal_filters)
+        ]
         return context
+
+    def _resolve_literal_predicate(
+        self, predicate: LiteralPredicate
+    ) -> list[LiteralDimensionFilter]:
+        dimension = self.resolver.resolve_dimension_term(predicate.dimension)
+        filters = [LiteralDimensionFilter(
+            dimension=dimension.dimension_id,
+            business_name=dimension.business_name,
+            operator=predicate.operator,
+            value=predicate.value,
+            sql_value=predicate.value,
+        )]
+        if dimension.dimension_id == "request_error_reason":
+            result_dimension = self.resolver.resolve_dimension("request_result")
+            filters.insert(0, LiteralDimensionFilter(
+                dimension=result_dimension.dimension_id,
+                business_name=result_dimension.business_name,
+                value="FAIL",
+                sql_value="FAIL",
+            ))
+        return filters
+
+    def _compile_literal_filter(
+        self, literal_filter: LiteralDimensionFilter
+    ) -> LiteralDimensionFilter:
+        dimension = self.resolver.resolve_dimension(literal_filter.dimension)
+        mappings = [mapping for mapping in dimension.mappings or [] if mapping.column]
+        if len(mappings) != 1:
+            raise ValueError(
+                f"Literal dimension '{dimension.dimension_id}' must have exactly one "
+                "column mapping."
+            )
+        mapping = mappings[0]
+        prefix = mapping.pattern.prefix if mapping.pattern else None
+        sql_value = literal_filter.value
+        if prefix and not sql_value.upper().startswith(prefix.upper()):
+            sql_value = f"{prefix}{sql_value}"
+        escaped_value = sql_value.replace("'", "''")
+        return literal_filter.model_copy(update={
+            "business_name": dimension.business_name,
+            "sql_value": sql_value,
+            "table": mapping.table,
+            "column": mapping.column,
+            "sql_expression": (
+                f'{{alias}}."{mapping.column}" '
+                f"{literal_filter.operator} '{escaped_value}'"
+            ),
+        })
+
+    @staticmethod
+    def _deduplicate_literal_filters(
+        literal_filters: list[LiteralDimensionFilter],
+    ) -> list[LiteralDimensionFilter]:
+        result: list[LiteralDimensionFilter] = []
+        seen: set[tuple[str, str, str]] = set()
+        for item in literal_filters:
+            key = (item.dimension, item.operator, item.value)
+            if key not in seen:
+                seen.add(key)
+                result.append(item)
+        return result
 
     def search_glossary(self, term: str, limit: int = 5) -> dict[str, list[str]]:
         """Alias를 포함해 입력과 유사한 canonical glossary 용어를 반환한다."""

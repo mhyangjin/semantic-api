@@ -30,7 +30,7 @@ columns:
       워크스페이스별 조회일 경우 워크스페이스 ID 앞에 WS#을 붙인다.
       템플릿별 조회일 경우 템플릿 ID 앞에 TEMP#을 붙인다.
       JOB별 조회일 경우 JOB ID 앞에 JOB#을 붙인다.
-      발송지역별 조회일 경우 발송지 구분자 앞에 SOURCE:을 붙인다.
+      발신지별 조회일 경우 발신지 구분자 앞에 SOURCE:을 붙인다.
       custom data별 조회일 경우 custom data field명:value 를 붙인다.
 
   - name: notification_id

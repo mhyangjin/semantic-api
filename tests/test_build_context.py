@@ -3,6 +3,13 @@ from mcp_server.models import BuildContextRequest, SearchGlossaryRequest
 from mcp_server.tools import build_context, search_glossary
 
 
+def _literal_summary(result: dict) -> list[tuple[str, str, str, str]]:
+    return [
+        (item["dimension"], item["value"], item["table"], item["column"])
+        for item in result["literal_dimension_filters"]
+    ]
+
+
 def test_service_build_context_is_self_contained_and_compact() -> None:
     service = create_service("./metadata")
 
@@ -130,12 +137,130 @@ def test_build_context_resolves_literal_organization_from_question() -> None:
     assert {item["dimension_id"] for item in result["dimensions"]} >= {
         "organization"
     }
-    assert result["literal_dimension_filters"] == [{
-        "dimension": "organization",
-        "business_name": "조직",
-        "value": "sample_team_01",
-        "sql_value": "OR#sample_team_01",
+    assert _literal_summary(result) == [(
+        "organization", "sample_team_01", "notification_index", "index"
+    )]
+    assert result["literal_dimension_filters"][0]["sql_expression"] == (
+        '{alias}."index" = \'OR#sample_team_01\''
+    )
+
+
+def test_build_context_preserves_literal_source_from_question() -> None:
+    result = build_context(BuildContextRequest(
+        metrics=["요청수", "성공수"],
+        filters=["어제"],
+        question="어제 발신지 FLARELANE에서 발송 요청한 요청수 와 성공수를 알려줘.",
+    ))
+
+    assert {item["metric_name"] for item in result["metrics"]} >= {
+        "request_count",
+        "send_success_count",
+    }
+    assert {item["dimension_id"] for item in result["dimensions"]} >= {
+        "source"
+    }
+    assert {table["table_name"] for table in result["tables"]} >= {
+        "notification_index"
+    }
+    assert _literal_summary(result) == [(
+        "source", "FLARELANE", "notification_index", "index"
+    )]
+
+
+def test_build_context_accepts_source_alias_from_question() -> None:
+    result = build_context(BuildContextRequest(
+        metrics=["요청수", "성공수"],
+        filters=["어제"],
+        question="어제 발송지 FALRELANE에서 발송한 요청수와 성공수를 알려줘.",
+    ))
+
+    assert _literal_summary(result) == [(
+        "source", "FALRELANE", "notification_index", "index"
+    )]
+
+
+def test_build_context_accepts_literal_source_passed_as_filter() -> None:
+    result = build_context(BuildContextRequest(
+        metrics=["요청수", "성공수"],
+        filters=["어제", "발신지 FALRELANE"],
+        question="어제 발신지 FALRELANE에서 발송한 요청수와 성공수를 알려줘.",
+    ))
+
+    assert _literal_summary(result) == [(
+        "source", "FALRELANE", "notification_index", "index"
+    )]
+    assert all(
+        condition["value"] != "FALRELANE"
+        for condition in result["filters"]
+    )
+
+
+def test_build_context_compiles_request_error_message_on_notification_index() -> None:
+    result = build_context(BuildContextRequest(
+        metrics=["요청수"],
+        dimensions=["고객 번호"],
+        filters=["어제", "contact_excluded"],
+        question=(
+            "어제 발신지 FLARELANE에서 발송한 메세지 중 요청 에러 메세지가 "
+            "contact_excluded 인 고객 번호 1건만 알려줘."
+        ),
+    ))
+
+    dimensions = {
+        item["dimension_id"]: item for item in result["dimensions"]
+    }
+    assert dimensions["request_result"]["mappings"] == [{
+        "table": "notification_status",
+        "column": "result",
     }]
+    assert dimensions["request_error_reason"]["mappings"] == [{
+        "table": "notification_status",
+        "column": "error_message",
+    }]
+    assert _literal_summary(result) == [
+        ("source", "FLARELANE", "notification_index", "index"),
+        ("request_result", "FAIL", "notification_status", "result"),
+        (
+            "request_error_reason",
+            "contact_excluded",
+            "notification_status",
+            "error_message",
+        ),
+    ]
+
+
+def test_build_context_accepts_typed_literal_predicates() -> None:
+    result = build_context(BuildContextRequest(
+        metrics=["요청수"],
+        dimensions=["고객 번호"],
+        filters=["어제"],
+        literal_filters=[
+            {"dimension": "source", "operator": "=", "value": "FLARELANE"},
+            {
+                "dimension": "request_error_reason",
+                "operator": "=",
+                "value": "contact_excluded",
+            },
+        ],
+    ))
+
+    assert _literal_summary(result) == [
+        ("source", "FLARELANE", "notification_index", "index"),
+        ("request_result", "FAIL", "notification_status", "result"),
+        (
+            "request_error_reason",
+            "contact_excluded",
+            "notification_status",
+            "error_message",
+        ),
+    ]
+    assert [
+        item["sql_expression"] for item in result["literal_dimension_filters"]
+    ] == [
+        '{alias}."index" = \'SOURCE:FLARELANE\'',
+        '{alias}."result" = \'FAIL\'',
+        '{alias}."error_message" = \'contact_excluded\'',
+    ]
 
 
 def test_customer_dimension_context_contains_compiled_athena_expressions() -> None:

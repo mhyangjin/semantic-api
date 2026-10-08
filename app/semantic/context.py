@@ -45,29 +45,38 @@ def _athena_filter_expression(condition: DimensionFilterCondition) -> str | None
 
     if condition.dimension != "request_date":
         return None
-    if isinstance(condition.value, str) and condition.value.startswith(
-        "explicit_range:"
-    ):
-        value = condition.value.removeprefix("explicit_range:")
+    if isinstance(condition.value, str) and condition.value.startswith("date_range:"):
+        value = condition.value.removeprefix("date_range:")
         match = re.fullmatch(
-            r"(\d{4}-\d{2}-\d{2})\s*부터\s*(\d{4}-\d{2}-\d{2})\s*까지",
+            r"(\d{4}-\d{2}-\d{2}|오늘|금일|어제|전일)\s*부터\s*"
+            r"(\d{4}-\d{2}-\d{2}|오늘|금일|어제|전일)\s*까지",
             value,
         )
         if not match:
-            raise ValueError(f"Invalid explicit date range: {value}")
+            raise ValueError(f"Invalid date range: {value}")
         start, end = match.groups()
-        try:
-            start_date = date.fromisoformat(start)
-            end_date = date.fromisoformat(end)
-        except ValueError as exc:
-            raise ValueError(f"Invalid explicit date range: {value}") from exc
-        if start_date > end_date:
-            raise ValueError(
-                f"Explicit date range start must not be after end: {value}"
-            )
+        today = "CAST(current_timestamp AT TIME ZONE 'Asia/Seoul' AS date)"
+
+        def date_expression(token: str) -> str:
+            if token in {"오늘", "금일"}:
+                return today
+            if token in {"어제", "전일"}:
+                return f"date_add('day', -1, {today})"
+            try:
+                date.fromisoformat(token)
+            except ValueError as exc:
+                raise ValueError(f"Invalid date in range: {token}") from exc
+            return f"DATE '{token}'"
+
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", start) and re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}", end
+        ) and date.fromisoformat(start) > date.fromisoformat(end):
+            raise ValueError(f"Date range start must not be after end: {value}")
+        lower = date_expression(start)
+        upper = f"date_add('day', 1, {date_expression(end)})"
         return (
-            f"{{alias}}.request_kst_date >= '{start}' "
-            f"AND {{alias}}.request_kst_date <= '{end}'"
+            f"{{alias}}.request_kst_date >= CAST({lower} AS varchar) "
+            f"AND {{alias}}.request_kst_date < CAST({upper} AS varchar)"
         )
     week_start = (
         "date_trunc('week', current_timestamp AT TIME ZONE 'Asia/Seoul')"
@@ -91,7 +100,8 @@ def _athena_filter_expression(condition: DimensionFilterCondition) -> str | None
     lower, upper = boundaries
     return (
         f"{{alias}}.request_kst_date >= CAST(CAST({lower} AS date) AS varchar) "
-        f"AND {{alias}}.request_kst_date < CAST(CAST({upper} AS date) AS varchar)"
+        f"AND {{alias}}.request_kst_date < "
+        f"CAST(CAST({upper} AS date) AS varchar)"
     )
 
 

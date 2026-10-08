@@ -98,6 +98,14 @@ def test_search_glossary_returns_filter_alias_as_canonical_term() -> None:
     assert result.filters[0] == "지난 주"
 
 
+def test_search_glossary_resolves_yesterday_through_today() -> None:
+    result = search_glossary(
+        SearchGlossaryRequest(term="어제부터 오늘까지")
+    )
+
+    assert result.filters[0] == "날짜 범위"
+
+
 def test_search_glossary_returns_short_metric_aliases_as_canonical_terms() -> None:
     assert search_glossary(
         SearchGlossaryRequest(term="요청수")
@@ -111,6 +119,38 @@ def test_search_glossary_resolves_customer_number_alias() -> None:
     assert search_glossary(
         SearchGlossaryRequest(term="고객번호")
     ).dimensions[0] == "고객"
+
+
+def test_search_glossary_resolves_message_and_notification_id() -> None:
+    for term in ("메시지", "메세지", "notification_id"):
+        assert search_glossary(
+            SearchGlossaryRequest(term=term)
+        ).dimensions[0] == "notification_id"
+
+
+def test_build_context_requires_distinct_notification_id_only() -> None:
+    for term in ("메시지", "메세지", "notification_id"):
+        result = build_context(BuildContextRequest(dimensions=[term]))
+
+        assert result["metrics"] == []
+        assert len(result["dimensions"]) == 1
+        assert result["dimensions"][0] == {
+            "dimension_id": "notification_id",
+            "business_name": "notification_id",
+            "distinct": True,
+            "mappings": [{
+                "table": "notification",
+                "column": "notification_id",
+            }],
+            "description": (
+                "메시지 또는 notification_id 목록 조회에 사용한다. "
+                "결과에는 notification_id 컬럼만 포함하고 반드시 SELECT DISTINCT로 "
+                "중복을 제거한다. 다른 컬럼이나 집계값은 반환하지 않는다.\n"
+            ),
+        }
+        assert [table["table_name"] for table in result["tables"]] == [
+            "notification"
+        ]
 
 
 def test_build_context_resolves_metric_and_dimension_aliases() -> None:
@@ -287,6 +327,35 @@ def test_previous_week_and_month_filters_contain_athena_expressions() -> None:
     assert "{alias}.request_kst_date" in month_sql
 
 
+def test_yesterday_through_today_filter_contains_safe_athena_expression() -> None:
+    result = build_context(BuildContextRequest(
+        dimensions=["notification_id"],
+        filters=["어제부터 오늘까지", "발송 실패"],
+        question=(
+            "어제부터 오늘까지 발송 실패한 메세지 중에서 "
+            "에러코드가 888인 notification_id를 찾아."
+        ),
+    ))
+
+    filters = {
+        item["value"]: item
+        for item in result["filters"]
+    }
+    date_filter = filters["date_range:어제부터 오늘까지"]
+    assert date_filter["dimension"] == "request_date"
+    assert date_filter["operator"] == "between"
+    assert "date_add('day', -1" in date_filter["sql_expression"]
+    assert "date_add('day', 1" in date_filter["sql_expression"]
+    assert result["dimensions"][0]["dimension_id"] == "notification_id"
+    assert result["dimensions"][0]["distinct"] is True
+    assert _literal_summary(result) == [(
+        "request_error_code", "888", "notification_status", "error_code"
+    )]
+    assert result["literal_dimension_filters"][0]["sql_expression"] == (
+        '{alias}."error_code" = \'888\''
+    )
+
+
 def test_explicit_date_range_contains_safe_athena_expression() -> None:
     result = build_context(BuildContextRequest(
         metrics=["발송 요청 수"],
@@ -294,9 +363,10 @@ def test_explicit_date_range_contains_safe_athena_expression() -> None:
     ))
 
     assert result["filters"][0]["value"] == (
-        "explicit_range:2026-09-01부터 2026-09-07까지"
+        "date_range:2026-09-01부터 2026-09-07까지"
     )
     assert result["filters"][0]["sql_expression"] == (
-        "{alias}.request_kst_date >= '2026-09-01' "
-        "AND {alias}.request_kst_date <= '2026-09-07'"
+        "{alias}.request_kst_date >= CAST(DATE '2026-09-01' AS varchar) "
+        "AND {alias}.request_kst_date < "
+        "CAST(date_add('day', 1, DATE '2026-09-07') AS varchar)"
     )

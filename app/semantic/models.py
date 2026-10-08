@@ -72,6 +72,7 @@ class DimensionModel(BaseModel):
     """차원(Dimension) 메타데이터 모델"""
     dimension_id: str
     business_name: str
+    distinct: bool = False
     parameters: Optional[List[Parameter]] = None
     mappings: Optional[List[Mapping]] = None
     joins: Optional[List[str]] = None
@@ -266,4 +267,3 @@ class AnalysisPatternModel(BaseModel):
 
     class Config:
         extra = "forbid"
-

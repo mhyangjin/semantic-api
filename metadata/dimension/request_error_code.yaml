@@ -1,0 +1,8 @@
+dimension_id: request_error_code
+business_name: 에러 코드
+description: notification_status에 기록된 처리 실패 코드
+mappings:
+  - table: notification_status
+    column: error_code
+joins:
+  - notification

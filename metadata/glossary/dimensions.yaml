@@ -1,5 +1,17 @@
 version: 1.0
 dimensions:
+  - term: notification_id
+    dimension: notification_id
+    aliases:
+      - notification id
+      - 메시지
+      - 메세지
+      - 메시지 ID
+      - 메세지 ID
+      - 발송 요청 ID
+    description: >
+      메시지를 찾는 요청은 중복을 제거한 notification_id 목록만 반환한다.
+
   - term: 고객
     dimension: customer
     aliases:
@@ -132,12 +144,31 @@ dimensions:
     description: >
       notification_status에 기록된 요청 처리 결과
 
-  - term: 요청 에러 메시지
+  - term: 에러 메시지
     dimension: request_error_reason
     aliases:
+      - 요청 에러 메시지
       - 요청 에러 메세지
       - 요청 오류 메시지
       - 요청 오류 메세지
+      - 에러 메세지
+      - 에러메세지
+      - 에러메시지
+      - 오류메시지
+      - 오류메세지
+      - 오류 메시지
+      - 오류 메세지
+    description: >
+      notification_status에 기록된 요청 처리 실패 사유
+
+  - term: 에러 코드
+    dimension: request_error_code
+    aliases:
+      - 에러 코드
+      - 에러코드
+      - 오류코드
+      - 오류 코드
+      - 결과 에러 코드
     description: >
       notification_status에 기록된 요청 처리 실패 사유
 

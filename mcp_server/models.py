@@ -33,6 +33,7 @@ class MappingMetadataResponse(BaseModel):
 class DimensionMetadataResponse(BaseModel):
     dimension_id: str
     business_name: str
+    distinct: bool = False
     parameters: list[dict[str, Any]] = Field(default_factory=list)
     mappings: list[MappingMetadataResponse] = Field(default_factory=list)
     joins: list[str] = Field(default_factory=list)

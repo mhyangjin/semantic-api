@@ -220,7 +220,7 @@ class SemanticService:
         }
         result = {
             category: self._rank_glossary_entries(
-                normalized_query, entries, limit
+                term, entries, limit
             )
             for category, entries in sources.items()
         }
@@ -247,11 +247,17 @@ class SemanticService:
     def _rank_glossary_entries(
         cls, query: str, entries: list[object], limit: int
     ) -> list[str]:
+        normalized_query = cls._normalize_search_text(query)
         ranked: list[tuple[float, str]] = []
         for entry in entries:
             canonical = str(getattr(entry, "term", ""))
             candidates = [canonical, *(getattr(entry, "aliases", []) or [])]
-            score = max(cls._similarity(query, value) for value in candidates)
+            score = max(cls._similarity(normalized_query, value) for value in candidates)
+            if any(
+                re.search(pattern.regex, query)
+                for pattern in (getattr(entry, "patterns", []) or [])
+            ):
+                score = 1.0
             if score >= 0.35:
                 ranked.append((score, canonical))
         ranked.sort(key=lambda item: (-item[0], item[1]))

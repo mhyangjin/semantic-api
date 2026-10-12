@@ -1,6 +1,8 @@
 dimension_id: request_error_code
 business_name: 에러 코드
 description: notification_status에 기록된 처리 실패 코드
+literal_patterns:
+  - regex: '(?:에러|오류)\s*코드(?:가|는|이)?\s+([A-Za-z0-9_.:#-]+)'
 mappings:
   - table: notification_status
     column: error_code

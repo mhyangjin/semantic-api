@@ -19,6 +19,14 @@ class ColumnFilterCondition(BaseModel):
     operator: str
     value: Any
 
+
+class LiteralPattern(BaseModel):
+    """자연어 질문에서 dimension의 리터럴 값을 추출하는 규칙."""
+
+    regex: str
+    value_group: int = 1
+    strip: str = ".,"
+
 class MappingPattern(BaseModel):
     format: Optional[str]=None
     prefix: Optional[str]=None
@@ -73,6 +81,8 @@ class DimensionModel(BaseModel):
     dimension_id: str
     business_name: str
     distinct: bool = False
+    literal_patterns: Optional[List[LiteralPattern]] = None
+    implied_filters: Optional[List[DimensionFilterCondition]] = None
     parameters: Optional[List[Parameter]] = None
     mappings: Optional[List[Mapping]] = None
     joins: Optional[List[str]] = None

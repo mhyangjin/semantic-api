@@ -245,6 +245,9 @@ class MetadataRepository :
     def get_dimension(self, name) :
         return self._registry.dimension(name)
 
+    def list_dimensions(self) -> dict[str, DimensionModel]:
+        return dict(self._registry.dimensions)
+
     def get_metric(self, name) :
         return self._registry.metric(name)
 

@@ -1,5 +1,7 @@
 dimension_id: organization
 business_name: 조직
+literal_patterns:
+  - regex: '(?:^|\s)조직(?:\s*(?:ID|아이디))?\s+([A-Za-z0-9_.:#-]+)'
 
 mappings:
   - table: notification_index

@@ -99,14 +99,19 @@ class SemanticService:
     ) -> SemanticContext:
         """Build a compact, self-contained context for a SQL agent."""
 
-        resolved_literal_filters = resolve_literal_dimension_filters(question)
+        dimensions_by_id = self.repository.list_dimensions()
+        resolved_literal_filters = resolve_literal_dimension_filters(
+            question, dimensions_by_id
+        )
         for literal_filter in literal_filters or []:
             resolved_literal_filters.extend(
                 self._resolve_literal_predicate(literal_filter)
             )
         semantic_filters: list[str] = []
         for filter_term in filters or []:
-            resolved_literals = resolve_literal_dimension_filters(filter_term)
+            resolved_literals = resolve_literal_dimension_filters(
+                filter_term, dimensions_by_id
+            )
             if not resolved_literals:
                 if any(
                     filter_term.casefold() == literal.value.casefold()
@@ -140,21 +145,23 @@ class SemanticService:
         self, predicate: LiteralPredicate
     ) -> list[LiteralDimensionFilter]:
         dimension = self.resolver.resolve_dimension_term(predicate.dimension)
-        filters = [LiteralDimensionFilter(
+        filters: list[LiteralDimensionFilter] = []
+        for implied in dimension.implied_filters or []:
+            implied_dimension = self.resolver.resolve_dimension(implied.dimension)
+            filters.append(LiteralDimensionFilter(
+                dimension=implied_dimension.dimension_id,
+                business_name=implied_dimension.business_name,
+                operator=implied.operator,
+                value=str(implied.value),
+                sql_value=str(implied.value),
+            ))
+        filters.append(LiteralDimensionFilter(
             dimension=dimension.dimension_id,
             business_name=dimension.business_name,
             operator=predicate.operator,
             value=predicate.value,
             sql_value=predicate.value,
-        )]
-        if dimension.dimension_id == "request_error_reason":
-            result_dimension = self.resolver.resolve_dimension("request_result")
-            filters.insert(0, LiteralDimensionFilter(
-                dimension=result_dimension.dimension_id,
-                business_name=result_dimension.business_name,
-                value="FAIL",
-                sql_value="FAIL",
-            ))
+        ))
         return filters
 
     def _compile_literal_filter(

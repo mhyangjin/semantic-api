@@ -1,4 +1,6 @@
 from app.semantic import create_service
+from app.semantic.models import DimensionModel
+from app.semantic.value_resolver import resolve_literal_dimension_filters
 from mcp_server.models import BuildContextRequest, SearchGlossaryRequest
 from mcp_server.tools import build_context, search_glossary
 
@@ -7,6 +9,24 @@ def _literal_summary(result: dict) -> list[tuple[str, str, str, str]]:
     return [
         (item["dimension"], item["value"], item["table"], item["column"])
         for item in result["literal_dimension_filters"]
+    ]
+
+
+def test_literal_resolver_uses_dimension_metadata_without_code_changes() -> None:
+    dimensions = {
+        "campaign": DimensionModel.model_validate({
+            "dimension_id": "campaign",
+            "business_name": "캠페인",
+            "literal_patterns": [{
+                "regex": r"캠페인\s+([A-Za-z0-9_-]+)",
+            }],
+        }),
+    }
+
+    result = resolve_literal_dimension_filters("캠페인 autumn_2026", dimensions)
+
+    assert [(item.dimension, item.value) for item in result] == [
+        ("campaign", "autumn_2026")
     ]
 
 

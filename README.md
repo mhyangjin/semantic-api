@@ -288,6 +288,49 @@ semantic-api/
 
 ### 메타데이터 작성 가이드
 
+#### 이 프로젝트에서 사용하는 테이블 구조
+
+아래 구조는 `metadata/table/*.yaml`에 정의된 현재 예제 데이터 모델입니다. 이
+Semantic API가 모든 프로젝트에 동일한 물리 테이블이 존재한다고 가정하는 것은
+아닙니다.
+
+> **다른 프로젝트에 적용할 때 주의:** 이 저장소를 참고하여 개발하는 경우,
+> `metadata/table/`, `metadata/dimension/`, `metadata/metric/` 및 glossary의 테이블명,
+> 컬럼명, 타입, 조인 조건과 cardinality를 대상 프로젝트의 실제 데이터베이스
+> 구조에 맞게 반드시 수정해야 합니다. 아래 예제 구조를 수정하지 않고 사용하면
+> 잘못된 SQL, 누락된 데이터 또는 조인에 의한 중복 결과가 발생할 수 있습니다.
+> 애플리케이션 코드에 대상 프로젝트의 테이블 구조를 하드코딩하지 말고
+> 메타데이터를 변경하십시오.
+
+공통 연결 키는 `notification_id`이며, 발송 요청을 나타내는 `notification`을
+중심으로 다음 테이블이 연결됩니다.
+
+| 테이블 | 역할 | 정의된 컬럼 |
+| --- | --- | --- |
+| `notification` | 발송 요청 | `notification_id` (string), `info` (타입 미지정), `request_channel_id` (string), `request_kst_date` (string, `YYYY-MM-DD`) |
+| `notification_channels` | 채널 라우팅 순서 | `notification_id` (string), `routing_priority` (integer), `channel_id` (string) |
+| `notification_status` | 수신자별 처리 결과 | `notification_id` (string), `custom_message_id`, `status`, `result`, `error_code`, `error_message`, `occurred_at` (string) |
+| `notification_index` | 조건별 역색인 | `index` (string), `notification_id` (string), `occurred_at` (string) |
+| `recipient` | 발송 대상 고객 | `recipient_id`, `notification_id`, `custom_message_id`, `channel_id`, `notification_type`, `organization_id`, `service_id`, `workspace_id` |
+| `inbox` | 고객별 읽음 여부 | `customer_id` (string, Base64), `notification_id` (string), `channel_id` (string), `custom_message_id` (string), `is_open` (string) |
+
+주요 조인 규칙은 다음과 같습니다.
+
+| 기준 테이블 | 대상 테이블 | 조건 | Cardinality |
+| --- | --- | --- | --- |
+| `notification` | `notification_channels` | `notification_id = notification_id` | one-to-many |
+| `notification` | `notification_index` | `notification_id = notification_id` | one-to-many |
+| `notification` | `notification_status` | `notification_id = notification_id`; 필요 시 `request_channel_id = status` | one-to-many |
+| `notification` | `recipient` | `notification_id = notification_id` | one-to-many, entity many-to-many |
+| `notification` | `inbox` | `notification_id = notification_id` | one-to-many |
+| `notification_channels` | `notification_status` | `notification_id = notification_id`; 필요 시 `channel_id = status` | one-to-many |
+| `recipient` | `notification_status` | `notification_id = notification_id`; 수신자 단위 조회 시 `custom_message_id = custom_message_id` | one-to-many |
+
+`notification_index.index`에는 조회 종류에 따라 `EVENT#`, `CH#`, `OR#`, `WS#`,
+`TEMP#`, `JOB#`, `SOURCE:` 등의 prefix가 사용됩니다. `recipient.notification_type`은
+`ad` 또는 `info`, `notification_status.result`는 `SUCCESS` 또는 `FAIL`을 사용합니다.
+구체적인 설명과 조건부 조인은 각 `metadata/table/*.yaml` 파일을 기준으로 합니다.
+
 #### 차원 (Dimension) 정의
 `metadata/dimension/` 디렉토리에 YAML 파일로 차원을 정의합니다:
 
@@ -665,6 +708,51 @@ semantic-api/
 - `POST /semantic/query` - Semantic-based data query
 
 ### Metadata Definition Guide
+
+#### Table structure used by this project
+
+The following schema is the example data model currently declared in
+`metadata/table/*.yaml`. The Semantic API does not assume that every project has
+these physical tables.
+
+> **Required when adapting this repository:** If you use this project as a
+> reference, you must update the table names, columns, types, join conditions,
+> and cardinalities under `metadata/table/`, `metadata/dimension/`,
+> `metadata/metric/`, and the glossary to match the target project's actual
+> database schema. Reusing this example metadata unchanged can produce invalid
+> SQL, missing data, or duplicate rows caused by incorrect joins. Do not
+> hard-code the target schema in application code; change the metadata instead.
+
+The common key is `notification_id`. The remaining tables are connected around
+the `notification` table, which represents a send request.
+
+| Table | Purpose | Declared columns |
+| --- | --- | --- |
+| `notification` | Send request | `notification_id` (string), `info` (unspecified type), `request_channel_id` (string), `request_kst_date` (string, `YYYY-MM-DD`) |
+| `notification_channels` | Channel routing order | `notification_id` (string), `routing_priority` (integer), `channel_id` (string) |
+| `notification_status` | Per-recipient processing result | `notification_id` (string), `custom_message_id`, `status`, `result`, `error_code`, `error_message`, `occurred_at` (string) |
+| `notification_index` | Inverted lookup index | `index` (string), `notification_id` (string), `occurred_at` (string) |
+| `recipient` | Message recipient | `recipient_id`, `notification_id`, `custom_message_id`, `channel_id`, `notification_type`, `organization_id`, `service_id`, `workspace_id` |
+| `inbox` | Per-customer open state | `customer_id` (string, Base64), `notification_id` (string), `channel_id` (string), `custom_message_id` (string), `is_open` (string) |
+
+The primary join rules are:
+
+| Source table | Target table | Conditions | Cardinality |
+| --- | --- | --- | --- |
+| `notification` | `notification_channels` | `notification_id = notification_id` | one-to-many |
+| `notification` | `notification_index` | `notification_id = notification_id` | one-to-many |
+| `notification` | `notification_status` | `notification_id = notification_id`; optionally `request_channel_id = status` | one-to-many |
+| `notification` | `recipient` | `notification_id = notification_id` | one-to-many, entity many-to-many |
+| `notification` | `inbox` | `notification_id = notification_id` | one-to-many |
+| `notification_channels` | `notification_status` | `notification_id = notification_id`; optionally `channel_id = status` | one-to-many |
+| `recipient` | `notification_status` | `notification_id = notification_id`; add `custom_message_id = custom_message_id` for recipient-level results | one-to-many |
+
+Depending on the lookup type, `notification_index.index` uses prefixes such as
+`EVENT#`, `CH#`, `OR#`, `WS#`, `TEMP#`, `JOB#`, and `SOURCE:`.
+`recipient.notification_type` uses `ad` or `info`, while
+`notification_status.result` uses `SUCCESS` or `FAIL`. Refer to the individual
+`metadata/table/*.yaml` files for the authoritative descriptions and conditional
+join rules.
 
 #### Dimension Definition
 Define dimensions in the `metadata/dimension/` directory as YAML files:

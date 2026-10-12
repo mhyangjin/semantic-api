@@ -212,6 +212,48 @@ SageMaker Agent가 SQL을 생성할 때는 여러 메타데이터 도구를 개�
 }
 ```
 
+### 사내 Agent 연동 구조와 보안 경계
+
+이 MCP는 데이터베이스 구조를 모르는 일반 사용자의 자연어 질문을 사내 Agent가
+처리하는 환경을 전제로 합니다. 권장 처리 흐름은 다음과 같습니다.
+
+1. 사용자가 자연어로 질문합니다.
+2. 사내 Agent가 외부 LLM에 질문을 전달하고 metric, dimension, filter 등의
+   semantic intent를 구조화합니다.
+3. Agent가 구조화된 요청으로 이 MCP의 `build_context` 등을 호출합니다.
+4. MCP가 필요한 메타데이터와 SQL 생성 컨텍스트를 반환합니다.
+5. Agent가 컨텍스트를 외부 LLM에 전달하여 SQL을 생성합니다.
+6. 사내 Agent가 생성된 SQL을 검증한 후 회사 내부 서비스에서 실행합니다.
+7. 내부 서비스의 조회 결과를 사용해 사용자에게 답변합니다.
+
+이 구조의 핵심 보안 장점은 **외부 LLM에 데이터베이스 자격 증명이나 직접 접속
+권한을 제공하지 않고, 실제 SQL 실행과 데이터 조회를 사내 Agent 및 내부 서비스로
+제한할 수 있다는 점**입니다. 외부 LLM은 SQL을 제안할 수 있지만 스스로 회사
+데이터베이스에 연결하거나 쿼리를 실행할 수 없어야 합니다.
+
+다만 이 구조가 내부 정보의 비노출을 자동으로 보장하는 것은 아닙니다. 자연어 질문,
+MCP가 반환한 테이블·컬럼·조인 메타데이터, SQL 조건에 포함된 값과 생성 SQL은 외부
+LLM에 전달될 수 있습니다. 조회 결과를 답변 생성을 위해 다시 외부 LLM에 보내면
+실제 데이터도 전달됩니다. 따라서 사용하는 LLM 서비스의 데이터 보존·학습 정책,
+기업용 보안 설정과 계약 조건을 별도로 검토하고, 전송 정보는 최소화해야 합니다.
+
+#### 사내 Agent에 필요한 보호장치
+
+- 데이터베이스 자격 증명을 LLM 프롬프트, MCP 응답 또는 외부 로그에 포함하지 않습니다.
+- SQL 실행 계정은 읽기 전용 및 최소 권한으로 구성합니다.
+- 허용된 catalog, schema, table, column만 접근할 수 있도록 allowlist를 적용합니다.
+- SQL을 parser/AST 기반으로 검사하고 `SELECT` 이외의 DDL, DML, 권한 변경 및 관리 명령을 차단합니다.
+- 다중 statement, 우회 가능한 SQL 주석, 외부 함수 호출과 허용되지 않은 subquery를 차단합니다.
+- 사용자 권한을 쿼리 실행 시점에 다시 확인하고 row-level 및 column-level security를 적용합니다.
+- 최대 조회 행 수, 실행 시간, 스캔 용량, 동시 실행 수와 비용 한도를 설정합니다.
+- 민감한 질문값은 외부 LLM 전송 전에 마스킹하거나 토큰화하고, 꼭 필요한 metadata만 전달합니다.
+- 조회 결과는 가능한 한 외부 LLM에 보내지 않으며, 필요한 경우 집계·마스킹·최소화한 결과만 전달합니다.
+- 질문, 생성 SQL, 검증 결과, 실행 사용자와 실행 결과에 대한 감사 로그를 남기되 민감정보는 마스킹합니다.
+- LLM이 생성한 SQL을 신뢰하지 않고 모든 요청에 동일한 검증 정책을 강제합니다.
+
+이 프로젝트는 semantic metadata와 컨텍스트를 제공하며, 위 실행 통제는 이 MCP를
+호출하고 SQL을 실행하는 사내 Agent 및 내부 서비스에서 구현해야 합니다.
+
 ### 환경 변수 설정
 
 프로젝트 루트에 `.env` 파일을 생성하여 다음과 같이 설정할 수 있습니다:
@@ -632,6 +674,52 @@ Example request:
   }
 }
 ```
+
+### Internal agent architecture and security boundary
+
+This MCP assumes that an internal agent serves users who ask natural-language
+questions without knowing the database schema. The recommended flow is:
+
+1. A user asks a question in natural language.
+2. The internal agent sends the question to an external LLM, which structures
+   the semantic intent into metrics, dimensions, and filters.
+3. The agent calls MCP tools such as `build_context` with that structured input.
+4. The MCP returns the metadata and context needed to generate SQL.
+5. The agent sends that context to the external LLM to generate SQL.
+6. The internal agent validates the generated SQL and executes it through an
+   internal company service.
+7. The query result is used to answer the user.
+
+The primary security benefit is that **the external LLM receives neither
+database credentials nor direct database access, while SQL execution and data
+retrieval remain restricted to the internal agent and company services**. The
+LLM may propose SQL, but it must not be able to connect to the company database
+or execute queries itself.
+
+This architecture does not automatically guarantee that no internal information
+is disclosed. The natural-language question, table/column/join metadata returned
+by the MCP, values embedded in SQL predicates, and the generated SQL may be sent
+to the external LLM. Sending query results back to the LLM for answer generation
+also discloses those results. Review the LLM provider's retention, training,
+enterprise security, and contractual terms, and minimize all transmitted data.
+
+#### Required safeguards in the internal agent
+
+- Never include database credentials in prompts, MCP responses, or external logs.
+- Execute SQL with a read-only, least-privilege database identity.
+- Allowlist the catalogs, schemas, tables, and columns that may be queried.
+- Parse and validate SQL using an AST; reject DDL, DML, privilege, and administrative statements, allowing only approved `SELECT` queries.
+- Reject multiple statements, bypass-oriented SQL comments, external function calls, and unapproved subqueries.
+- Recheck user authorization at execution time and enforce row-level and column-level security.
+- Set limits for returned rows, execution time, scanned bytes, concurrency, and cost.
+- Mask or tokenize sensitive question values before sending them to the LLM and provide only the metadata required for the request.
+- Avoid sending query results to the external LLM; when necessary, send only aggregated, masked, and minimized results.
+- Keep audit logs for the question, generated SQL, validation outcome, executing user, and result while masking sensitive values.
+- Treat all LLM-generated SQL as untrusted and apply the same validation policy to every request.
+
+This project provides semantic metadata and SQL-generation context. The internal
+agent and service that call this MCP and execute SQL are responsible for
+implementing the controls above.
 
 ### Environment Variables
 

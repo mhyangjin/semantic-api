@@ -1,0 +1,14 @@
+dimension_id: request_error_reason
+business_name: 에러 메시지
+description: notification_status에 기록된 처리 실패 사유
+literal_patterns:
+  - regex: '(?:요청\s*)?(?:에러|오류)\s*(?:메시지|메세지)(?:가|는|이)?\s+([A-Za-z0-9_.:#-]+)'
+implied_filters:
+  - dimension: request_result
+    operator: "="
+    value: FAIL
+mappings:
+  - table: notification_status
+    column: error_message
+joins:
+  - notification

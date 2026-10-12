@@ -1,0 +1,8 @@
+dimension_id: request_result
+business_name: 요청 처리 결과
+description: notification_status에 기록된 요청 처리 결과(SUCCESS/FAIL)
+mappings:
+  - table: notification_status
+    column: result
+joins:
+  - notification
